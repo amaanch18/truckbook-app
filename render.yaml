@@ -1,0 +1,4 @@
+services:
+  - type: web
+    name: truckbook-api
+    env: docker
