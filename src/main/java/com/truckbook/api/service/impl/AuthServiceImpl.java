@@ -5,16 +5,15 @@ import com.truckbook.api.entity.AppUser;
 import com.truckbook.api.entity.Organization;
 import com.truckbook.api.entity.OtpRequest;
 import com.truckbook.api.entity.Subscription;
-import com.truckbook.api.exception.BadGatewayException;
 import com.truckbook.api.exception.BadRequestException;
 import com.truckbook.api.repository.AppUserRepository;
 import com.truckbook.api.repository.OrganizationRepository;
 import com.truckbook.api.repository.OtpRequestRepository;
 import com.truckbook.api.repository.SubscriptionRepository;
 import com.truckbook.api.security.JwtService;
-import com.truckbook.api.service.Msg91OtpService;
 import com.truckbook.api.service.AuthService;
 import com.truckbook.api.service.OtpThrottleService;
+import com.truckbook.api.exception.TooManyRequestsException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -26,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -37,9 +37,10 @@ public class AuthServiceImpl implements AuthService {
   private final OrganizationRepository organizationRepository;
   private final SubscriptionRepository subscriptionRepository;
   private final JwtService jwtService;
-  private final Msg91OtpService msg91OtpService;
   private final OtpThrottleService otpThrottleService;
   private final Environment environment;
+  private final PasswordEncoder passwordEncoder;
+  private static final String STATIC_OTP = "123456";
 
   public AuthServiceImpl(
       OtpRequestRepository otpRequestRepository,
@@ -47,17 +48,17 @@ public class AuthServiceImpl implements AuthService {
       OrganizationRepository organizationRepository,
       SubscriptionRepository subscriptionRepository,
       JwtService jwtService,
-      Msg91OtpService msg91OtpService,
       OtpThrottleService otpThrottleService,
-      Environment environment) {
+      Environment environment,
+      PasswordEncoder passwordEncoder) {
     this.otpRequestRepository = otpRequestRepository;
     this.appUserRepository = appUserRepository;
     this.organizationRepository = organizationRepository;
     this.subscriptionRepository = subscriptionRepository;
     this.jwtService = jwtService;
-    this.msg91OtpService = msg91OtpService;
     this.otpThrottleService = otpThrottleService;
     this.environment = environment;
+    this.passwordEncoder = passwordEncoder;
   }
 
   @Override
@@ -70,7 +71,7 @@ public class AuthServiceImpl implements AuthService {
     UUID orgId = resolveOrgIdForOtp(phoneE164, lastOtp);
 
     OtpThrottleService.ThrottleState throttleState = otpThrottleService.check(phoneE164, now);
-    String provider = isProd() ? "MSG91" : "DEV";
+    String provider = "STATIC";
 
     OtpRequest request = lastOtp.orElseGet(() -> {
       OtpRequest created = new OtpRequest();
@@ -85,23 +86,16 @@ public class AuthServiceImpl implements AuthService {
     if (request.getOrgId() == null) {
       request.setOrgId(orgId);
     }
-    request.setOtpHash(null);
+    request.setOtpHash(passwordEncoder.encode(STATIC_OTP));
     request.setExpiresAt(now.plus(OTP_EXPIRY));
     request.setConsumedAt(null);
+    request.setAttemptCount(0);
     request.setLastSentAt(now);
     request.setSendCount(throttleState.nextSendCount());
     request.setProvider(provider);
     request.setProviderRef(null);
 
-    try {
-      if (isProd()) {
-        msg91OtpService.sendOtp(phoneE164);
-      } else {
-        log.info("DEV OTP for {}: 123456", phoneE164);
-      }
-    } catch (Exception ex) {
-      throw new BadGatewayException("OTP_PROVIDER_FAILED");
-    }
+    log.info("STATIC OTP for {}: {}", phoneE164, STATIC_OTP);
 
     otpRequestRepository.save(request);
     otpThrottleService.recordSend(phoneE164, provider, now);
@@ -115,19 +109,28 @@ public class AuthServiceImpl implements AuthService {
         .orElseThrow(() -> new BadRequestException("OTP not requested"));
 
     if (request.getConsumedAt() != null) {
-      throw new BadRequestException("OTP already used");
+      throw new BadRequestException("OTP_ALREADY_USED");
     }
 
     if (request.getExpiresAt().isBefore(now)) {
-      throw new BadRequestException("OTP expired");
+      throw new BadRequestException("OTP_EXPIRED");
     }
 
-    if (isProd()) {
-      msg91OtpService.verifyOtp(phoneE164, otp);
+    Integer attemptCount = request.getAttemptCount() == null ? 0 : request.getAttemptCount();
+    if (attemptCount >= 5) {
+      throw new TooManyRequestsException("OTP_TOO_MANY_ATTEMPTS");
+    }
+
+    boolean matches;
+    if (request.getOtpHash() != null) {
+      matches = passwordEncoder.matches(otp, request.getOtpHash());
     } else {
-      if (!"123456".equals(otp)) {
-        throw new BadRequestException("Invalid OTP");
-      }
+      matches = STATIC_OTP.equals(otp);
+    }
+    if (!matches) {
+      request.setAttemptCount(attemptCount + 1);
+      otpRequestRepository.save(request);
+      throw new BadRequestException("OTP_INVALID");
     }
 
     request.setConsumedAt(now);

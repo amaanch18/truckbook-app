@@ -21,15 +21,11 @@ public class ProdConfigValidator implements ApplicationRunner {
   public void run(ApplicationArguments args) {
     List<String> errors = new ArrayList<>();
 
-    String databaseUrl = trimToNull(environment.getProperty("DATABASE_URL"));
-    if (databaseUrl == null) {
-      String host = trimToNull(environment.getProperty("DB_HOST"));
-      String name = trimToNull(environment.getProperty("DB_NAME"));
-      String user = trimToNull(environment.getProperty("DB_USER"));
-      String pass = trimToNull(environment.getProperty("DB_PASSWORD"));
-      if (host == null || name == null || user == null || pass == null) {
-        errors.add("Missing database config: set DATABASE_URL or DB_HOST/DB_NAME/DB_USER/DB_PASSWORD.");
-      }
+    String datasourceUrl = trimToNull(environment.getProperty("SPRING_DATASOURCE_URL"));
+    String datasourceUser = trimToNull(environment.getProperty("SPRING_DATASOURCE_USERNAME"));
+    String datasourcePass = trimToNull(environment.getProperty("SPRING_DATASOURCE_PASSWORD"));
+    if (datasourceUrl == null || datasourceUser == null || datasourcePass == null) {
+      errors.add("Missing database config: set SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD.");
     }
 
     String jwtSecret = trimToNull(environment.getProperty("JWT_SECRET"));
@@ -41,6 +37,29 @@ public class ProdConfigValidator implements ApplicationRunner {
     }
     if (jwtSecret == null) {
       errors.add("Missing JWT secret: set JWT_SECRET or TRUCKBOOK_JWT_SECRET.");
+    }
+
+    String adminKey = trimToNull(environment.getProperty("TRUCKBOOK_ADMIN_KEY"));
+    if (adminKey == null) {
+      adminKey = trimToNull(environment.getProperty("truckbook.admin.key"));
+    }
+    if (adminKey == null) {
+      errors.add("Missing admin key: set TRUCKBOOK_ADMIN_KEY.");
+    }
+
+    String otpProvider = trimToNull(environment.getProperty("OTP_PROVIDER"));
+    if (otpProvider == null) {
+      otpProvider = "DEV";
+    }
+    if ("MSG91".equalsIgnoreCase(otpProvider)) {
+    // OTP provider keys are optional for now (static OTP)
+    } else if ("META_WHATSAPP".equalsIgnoreCase(otpProvider)) {
+      String waToken = trimToNull(environment.getProperty("META_WA_TOKEN"));
+      String waPhoneId = trimToNull(environment.getProperty("META_WA_PHONE_NUMBER_ID"));
+      String waTemplate = trimToNull(environment.getProperty("META_WA_TEMPLATE"));
+      if (waToken == null || waPhoneId == null || waTemplate == null) {
+        errors.add("Missing Meta WhatsApp config: set META_WA_TOKEN, META_WA_PHONE_NUMBER_ID, META_WA_TEMPLATE.");
+      }
     }
 
     if (!errors.isEmpty()) {

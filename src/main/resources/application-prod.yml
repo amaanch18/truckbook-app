@@ -4,9 +4,9 @@ server:
 
 spring:
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:}:${DB_PORT:5432}/${DB_NAME:}}
-    username: ${DB_USER:}
-    password: ${DB_PASSWORD:}
+    url: ${SPRING_DATASOURCE_URL:}
+    username: ${SPRING_DATASOURCE_USERNAME:}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
     hikari:
       schema: truckbook
   jpa:
@@ -26,6 +26,18 @@ logging:
   level:
     root: INFO
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  info:
+    env:
+      enabled: true
+
 app:
   jwt:
     secret: ${JWT_SECRET:${TRUCKBOOK_JWT_SECRET:}}
@@ -40,3 +52,6 @@ msg91:
   template-id: ${MSG91_TEMPLATE_ID:}
   sender-id: ${MSG91_SENDER_ID:}
   route: ${MSG91_ROUTE:4}
+
+otp:
+  provider: ${OTP_PROVIDER:DEV}

@@ -88,6 +88,24 @@ Common error examples:
   "timestamp": "2026-02-01T12:34:56+05:30"
 }
 ```
+- 429 (OTP throttled):
+```json
+{
+  "error": "OTP_RATE_LIMIT",
+  "fields": null,
+  "path": "/api/auth/otp/request",
+  "timestamp": "2026-02-01T12:34:56+05:30"
+}
+```
+- 429 (OTP hourly limit):
+```json
+{
+  "error": "OTP_HOURLY_LIMIT",
+  "fields": null,
+  "path": "/api/auth/otp/request",
+  "timestamp": "2026-02-01T12:34:56+05:30"
+}
+```
 - 403 (Subscription Expired):
 ```json
 {
@@ -120,8 +138,9 @@ Common error examples:
 ```
 - Notes:
   - OTP is 6 digits, expires in 5 minutes.
+  - Static OTP (temporary): **`123456`** for all environments.
   - Cooldown: 30 seconds between requests per phone.
-  - OTP is logged to server console (dev-friendly).
+  - Hourly limit: max 5 OTP requests per phone in the last 1 hour.
 - Errors:
   - 400 validation (invalid phone)
   - 429 too many requests (cooldown)
@@ -161,6 +180,8 @@ curl -X POST http://localhost:8080/api/auth/otp/request \
   - On first org creation, a TRIAL subscription is auto-created (plan: GROWTH, trial 14 days).
 - Errors:
   - 400: OTP not requested / OTP expired / Invalid OTP / OTP already used
+  - 400: `OTP_EXPIRED` / `OTP_ALREADY_USED` / `OTP_INVALID`
+  - 429: `OTP_TOO_MANY_ATTEMPTS` (>=5 wrong attempts until expiry)
 
 Curl:
 ```bash
