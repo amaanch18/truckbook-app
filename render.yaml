@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: truckbook-api
+    runtime: java
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/truckbook-api.jar
