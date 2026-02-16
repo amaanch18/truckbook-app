@@ -15,6 +15,7 @@ public class CorsConfig {
     config.setAllowedOrigins(List.of(
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://truckbook-app-ui.vercel.app",
         "https://truck-book.com",
         "https://www.truck-book.com"));
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
