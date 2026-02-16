@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: truckbook-api
+
+  profiles:
+    active: dev
+    
+  datasource:
+    url: jdbc:postgresql://localhost:5432/truckbook
+    username: truckbook_user
+    password: truckbook_pass
+    hikari:
+      schema: truckbook
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: truckbook
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: truckbook
+    create-schemas: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+
+app:
+  jwt:
+    secret: dev-secret-change-me-please-32chars-min
+    expiry-days: 7
+
+truckbook:
+  admin:
+    key: "${TRUCKBOOK_ADMIN_KEY:dev-admin-key}"

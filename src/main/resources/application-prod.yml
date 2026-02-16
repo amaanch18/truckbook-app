@@ -1,0 +1,42 @@
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}
+
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://${DB_HOST:}:${DB_PORT:5432}/${DB_NAME:}}
+    username: ${DB_USER:}
+    password: ${DB_PASSWORD:}
+    hikari:
+      schema: truckbook
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: truckbook
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    schemas: truckbook
+    create-schemas: true
+
+logging:
+  level:
+    root: INFO
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:${TRUCKBOOK_JWT_SECRET:}}
+    expiry-days: ${JWT_EXPIRY_DAYS:7}
+
+truckbook:
+  admin:
+    key: ${TRUCKBOOK_ADMIN_KEY:}
+
+msg91:
+  auth-key: ${MSG91_AUTH_KEY:}
+  template-id: ${MSG91_TEMPLATE_ID:}
+  sender-id: ${MSG91_SENDER_ID:}
+  route: ${MSG91_ROUTE:4}
