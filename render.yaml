@@ -2,3 +2,37 @@ services:
   - type: web
     name: truckbook-api
     env: docker
+    plan: free
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: truckbook-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: truckbook-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: truckbook-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: truckbook-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: truckbook-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TRUCKBOOK_ADMIN_KEY
+        generateValue: true
+
+databases:
+  - name: truckbook-db
+    databaseName: truckbook
+    user: truckbook_user
+    plan: free
